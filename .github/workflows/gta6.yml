@@ -56,6 +56,8 @@ jobs:
           else:
               state = "dispo"
           print("Etat :", state)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(f"Etat : **{state}**\n")
 
           now = datetime.now(timezone.utc)
           if state == "dispo":
@@ -72,3 +74,7 @@ jobs:
               notify("⚠️ Script GTA bloqué",
                      "Leclerc bloque la vérif depuis GitHub, préviens Claude.",
                      priority="default", tags="warning")
+
+          # run en rouge si Leclerc bloque, pour le voir direct dans l'onglet Actions
+          if state == "bloque":
+              raise SystemExit(1)
