@@ -2,7 +2,7 @@ name: GTA VI Leclerc watch
 
 on:
   schedule:
-    # Toutes les 5 min de 08:00 à 22:55 UTC = 9h00 -> 23h55 heure Algérie
+    # Toutes les 5 min de 08:00 à 22:55 UTC = 9h00 -> 23h55 heure Algérie 
     - cron: "*/5 8-22 * * *"
   workflow_dispatch:
     inputs:
