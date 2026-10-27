@@ -1,0 +1,163 @@
+name: GTA VI Auchan watch
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Envoyer une notification de test"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verifier le stock Auchan
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TEST: ${{ github.event.inputs.test }}
+        shell: python
+        run: |
+          import os
+          import urllib.request
+          from html.parser import HTMLParser
+          from datetime import datetime, timezone
+
+          URL = "https://www.auchan.fr/grand-theft-auto-vi-ps5/pr-C1883892"
+          TOPIC = os.environ.get("NTFY_TOPIC", "").strip()
+
+          if not TOPIC:
+              raise SystemExit("Secret NTFY_TOPIC manquant.")
+
+          def notify(title, message, priority="default", tags="video_game"):
+              req = urllib.request.Request(
+                  f"https://ntfy.sh/{TOPIC}",
+                  data=message.encode("utf-8"),
+                  headers={
+                      "Title": title,
+                      "Priority": priority,
+                      "Tags": tags,
+                      "Click": URL,
+                  },
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=15) as response:
+                  print("Notification envoyee :", response.status)
+
+          if os.environ.get("TEST", "").lower() == "true":
+              notify(
+                  "Test GTA VI Auchan",
+                  "Test reussi : les notifications Auchan fonctionnent."
+              )
+
+          class VisibleText(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.skip_depth = 0
+                  self.parts = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag in ("script", "style", "noscript"):
+                      self.skip_depth += 1
+
+              def handle_endtag(self, tag):
+                  if tag in ("script", "style", "noscript") and self.skip_depth:
+                      self.skip_depth -= 1
+
+              def handle_data(self, data):
+                  if self.skip_depth == 0 and data.strip():
+                      self.parts.append(data.strip())
+
+          try:
+              req = urllib.request.Request(
+                  URL,
+                  headers={
+                      "User-Agent": (
+                          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 Chrome/130.0 Safari/537.36"
+                      ),
+                      "Accept-Language": "fr-FR,fr;q=0.9",
+                      "Accept": "text/html,application/xhtml+xml",
+                  },
+              )
+              with urllib.request.urlopen(req, timeout=25) as response:
+                  raw = response.read().decode("utf-8", "ignore")
+
+              parser = VisibleText()
+              parser.feed(raw)
+              page_text = " ".join(parser.parts).lower()
+
+          except Exception as exc:
+              print("Erreur de chargement :", repr(exc))
+              page_text = ""
+
+          unavailable = [
+              "bientôt dispo",
+              "bientot dispo",
+              "indisponible",
+              "épuisé",
+              "epuise",
+              "rupture de stock",
+              "victime de son succès",
+              "victime de son succes",
+          ]
+
+          available = [
+              "ajouter au panier",
+              "ajouter dans le panier",
+              "ajout au panier",
+              "ajouter à mon panier",
+              "ajouter a mon panier",
+          ]
+
+          if "grand theft auto vi" not in page_text:
+              state = "bloque"
+          elif any(word in page_text for word in unavailable):
+              state = "pas_dispo"
+          elif any(word in page_text for word in available):
+              state = "dispo"
+          else:
+              state = "bloque"
+
+          print("Etat Auchan :", state)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(f"Resultat Auchan : **{state}**\n\n")
+              f.write(f"Page controlee : {URL}\n")
+
+          now = datetime.now(timezone.utc)
+
+          if state == "dispo":
+              notify(
+                  "GTA VI AUCHAN DISPONIBLE",
+                  "La page semble permettre la commande de GTA VI PS5. "
+                  "Verifie immediatement la page Auchan !",
+                  priority="urgent",
+              )
+
+          elif state == "pas_dispo" and now.minute < 5:
+              notify(
+                  "GTA VI Auchan : pas disponible",
+                  "Aucune disponibilite detectee pour le moment. "
+                  "La surveillance continue.",
+                  priority="low",
+                  tags="hourglass",
+              )
+
+          elif state == "bloque" and now.minute < 5:
+              notify(
+                  "GTA VI Auchan : controle a verifier",
+                  "Le script n'a pas pu confirmer le statut du produit. "
+                  "Consulte les journaux GitHub Actions.",
+                  priority="default",
+                  tags="warning",
+              )
+
+          if state == "bloque":
+              raise SystemExit(
+                  "Statut inconnu : pas d'alerte de disponibilite envoyee."
+              )
