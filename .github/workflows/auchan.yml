@@ -112,6 +112,10 @@ jobs:
               "ajout au panier",
               "ajouter à mon panier",
               "ajouter a mon panier",
+              "précommander",
+              "precommander",
+              "pré-commander",
+              "pre-commander",
           ]
 
           if "grand theft auto vi" not in page_text:
