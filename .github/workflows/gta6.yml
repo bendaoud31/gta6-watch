@@ -25,7 +25,7 @@ jobs:
           import os, urllib.request, urllib.error
           from datetime import datetime, timezone
 
-          URL = "https://www.e.leclerc/fp/grand-theft-auto-vi-code-in-a-box-xbox-series-5026555370103"
+          URL = "https://www.e.leclerc/fp/grand-theft-auto-vi-code-in-a-box-ps5-5026555439824"
           TOPIC = os.environ["NTFY_TOPIC"]
 
           def notify(title, msg, priority="urgent", tags="video_game"):
@@ -63,7 +63,7 @@ jobs:
           if state == "dispo":
               # renotifie à chaque check tant que c'est dispo
               notify("🚨 GTA VI DISPO chez Leclerc !",
-                     "Précommande Xbox dispo (60 €), fonce ! Tape pour ouvrir.")
+                     "Précommande PS5 dispo (60 €), fonce ! Tape pour ouvrir.")
           elif state == "epuise" and now.minute < 5:
               # point toutes les heures (1er check de l'heure)
               notify("GTA VI : rien pour l'instant",
